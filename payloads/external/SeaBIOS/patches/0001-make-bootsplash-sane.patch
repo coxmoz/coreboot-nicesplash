@@ -1,0 +1,74 @@
+From 015d42aefa7cdebee79f12f9eca113e234574c89 Mon Sep 17 00:00:00 2001
+From: Matt DeVillier <matt.devillier@puri.sm>
+Date: Tue, 24 Sep 2019 12:29:55 -0500
+Subject: [PATCH] make bootsplash sane
+
+---
+ src/boot.c       | 10 ++++++----
+ src/bootsplash.c |  2 +-
+ src/post.c       |  2 +-
+ src/util.h       |  1 +
+ 4 files changed, 9 insertions(+), 6 deletions(-)
+
+diff --git a/src/boot.c b/src/boot.c
+index 9f82f3c..f4c0f42 100644
+--- a/src/boot.c
++++ b/src/boot.c
+@@ -479,11 +479,13 @@ interactive_bootmenu(void)
+
+     char *bootmsg = romfile_loadfile("etc/boot-menu-message", NULL);
+     int menukey = romfile_loadint("etc/boot-menu-key", 1);
+-    printf("%s", bootmsg ?: "\nPress ESC for boot menu.\n\n");
+-    free(bootmsg);
+-
+     u32 menutime = romfile_loadint("etc/boot-menu-wait", DEFAULT_BOOTMENU_WAIT);
+-    enable_bootsplash();
++
++    if (!BootsplashActive) {
++        enable_vga_console();
++        printf("%s", bootmsg ?: "\nPress ESC for boot menu.\n\n");
++        free(bootmsg);
++    }
+     int scan_code = get_keystroke(menutime);
+     disable_bootsplash();
+     if (scan_code != menukey)
+diff --git a/src/bootsplash.c b/src/bootsplash.c
+index 538b316..6fa91dd 100644
+--- a/src/bootsplash.c
++++ b/src/bootsplash.c
+@@ -92,7 +92,7 @@ find_videomode(struct vbe_info *vesa_info, struct vbe_mode_info *mode_info
+     }
+ }
+
+-static int BootsplashActive;
++int BootsplashActive = 0;
+
+ void
+ enable_bootsplash(void)
+diff --git a/src/post.c b/src/post.c
+index f93106a..ad45b07 100644
+--- a/src/post.c
++++ b/src/post.c
+@@ -209,7 +209,7 @@ maininit(void)
+     // Run vga option rom
+     vgarom_setup();
+     sercon_setup();
+-    enable_vga_console();
++    enable_bootsplash();
+
+     // Do hardware initialization (if running synchronously)
+     if (!threads_during_optionroms()) {
+diff --git a/src/util.h b/src/util.h
+index 9c06850..997789d 100644
+--- a/src/util.h
++++ b/src/util.h
+@@ -42,6 +42,7 @@ int get_keystroke(int msec);
+ void enable_vga_console(void);
+ void enable_bootsplash(void);
+ void disable_bootsplash(void);
++extern int BootsplashActive;
+
+ // cdrom.c
+ extern struct eltorito_s CDEmu;
+--
+2.20.1
